@@ -1,4 +1,5 @@
 import typing
+from typing import Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -64,3 +65,52 @@ def right_pad_mask_to_length(
                 "This function is expected to be called with right-padded masks"
             )
     return ret
+
+
+L = typing.TypeVar("L", bound=int | torch.Tensor | npt.NDArray)
+
+
+def simulate_conv1d_length(
+    length: L, kernel_size: int | Sequence[int], stride: int | Sequence[int]
+) -> L:
+    if isinstance(kernel_size, Sequence) or isinstance(stride, Sequence):
+        if not (isinstance(kernel_size, Sequence) and isinstance(stride, Sequence)):
+            raise ValueError(
+                "`kernel_size` and `stride` must be both sequece or scalar."
+            )
+        if len(kernel_size) != len(stride):
+            raise ValueError("The lengths of `kernel_size` and `stride` must match.")
+
+        for ks, st in zip(kernel_size, stride):
+            length = simulate_conv1d_length(length, ks, st)
+        return length
+
+    return typing.cast(L, ((length - kernel_size) // stride) + 1)
+
+
+def right_pad(
+    xs: list[torch.Tensor], *, value=0.0
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Makes a padded batch from a sequence of tensors.
+
+    Returns:
+      `(y, mask)` where `y` is the array padded to fit the longest array in `xs`, `mask`
+      is the bool array indicating which elements in in `y` are non-padded elements.
+    """
+    if not xs:
+        raise ValueError("Attempted to make a padded batch from an empty sequence")
+    dim = -1  # TODO: Generalize to arbitrary dim.
+    lengths = [x.shape[dim] for x in xs]
+    max_length = max(lengths)
+    padded_x = [
+        torch.nn.functional.pad(
+            x,
+            [0, max_length - x.shape[dim]],
+            value=value,
+        )
+        for x in xs
+    ]
+    mask = length_to_right_pad_mask(
+        torch.tensor(lengths, device=xs[0].device), max_length
+    )
+    return torch.stack(padded_x), mask
