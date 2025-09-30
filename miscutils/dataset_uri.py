@@ -8,6 +8,19 @@ from loguru import logger
 
 @dataclasses.dataclass
 class DatasetUri:
+    """Utility class for specifying a dataset from, e.g. command-line argument.
+
+    A dataset URI has the following form.
+
+     - full: "[SOURCE]:[NAME]:[SPLIT]"
+     - w/o source: "[NAME]:[SPLIT]"
+     - w/o split: "[NAME]"
+
+    Interpretation of NAME and SPLIT is depending on the SOURCE.
+
+    The primary SOURCE is Hugging Face Hub ("hfhub").
+    """
+
     source: str | None
     name: str
     split: str | None
