@@ -114,3 +114,32 @@ def right_pad(
         torch.tensor(lengths, device=xs[0].device), max_length
     )
     return torch.stack(padded_x), mask
+
+
+def mask_last_n_elems(n: int, mask: torch.Tensor, dim: int = -1) -> torch.Tensor:
+    """Masks the last `n` unmasked elements from the mask array."""
+    mask = mask.bool().long()
+    return torch.logical_and(mask, mask.flip(dim).cumsum(dim).flip(dim) > n)
+
+
+def pack_and_pad_right(
+    x: torch.Tensor, mask: torch.Tensor, dim: int = -1
+) -> tuple[torch.Tensor, torch.Tensor]:
+    if dim != -1 or x.ndim != 2 or mask.ndim != 2:
+        raise ValueError("Currently, only [batch_size, seq_len] shape is supported.")
+
+    t_idxs = torch.where(mask, mask.bool().long().cumsum(dim) - 1, -1)
+    # ^ Note that disposing unused elements to "-1" is not problematic because
+    # if there's an unsed element, "-1" is vacant, so can be safely used as a trash bin.
+
+    instance_idxs = torch.arange(x.shape[0])[:, None]
+
+    y = torch.empty_like(x)
+    y[instance_idxs, t_idxs] = x
+
+    lengths = mask.long().sum(-1, keepdim=True)
+    ymask = (
+        torch.arange(y.shape[dim], dtype=torch.int32, device=y.device)[None, :]
+        < lengths
+    )
+    return y, ymask
