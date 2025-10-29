@@ -13,7 +13,9 @@ def detokenize_batch(
     if ids.ndim != 2:
         raise ValueError("shape of `ids` must be `(batch_size, max_seq_len)`")
     if ids.shape != mask.shape:
-        raise ValueError("shapes of `ids` and `mask` must match")
+        raise ValueError(
+            f"shapes of `ids` and `mask` must match ({ids.shape} != {mask.shape})"
+        )
     id_lists = [
         [i for i, m in zip(row_ids, row_mask) if m]
         for row_ids, row_mask in zip(ids, mask)

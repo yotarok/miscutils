@@ -10,8 +10,8 @@ def test_plot_sin():
     print(s)
     expected = """
 +1.00
-⣀⣤⣶⣿⣿⣿⣿⣿⣿⣶⣤⣀             
-             ⠉⠛⠿⣿⣿⣿⣿⣿⣿⠿⠛⠉
+⢀⣠⣴⣾⣿⣿⣿⣿⣿⣶⣤⣀             
+             ⠉⠛⠿⣿⣿⣿⣿⣿⡿⠟⠋⠁
 -1.00
 """.strip()
     assert s == expected
@@ -23,20 +23,24 @@ def test_plot_sin():
     print(s)
     expected = """
 +0.95
- ⣤⣶⣿⣿⣿⣿⣿⣿⣶⣤⣀ ⣀⣤⣶⣿⣿⣿⣿⣿⣶⣶⣤ 
- ⠛⠿⠿⣿⣿⣿⣿⣿⠿⠛⠉ ⠉⠛⠿⣿⣿⣿⣿⣿⣿⠿⠛ 
+ ⣠⣴⣾⣿⣿⣿⣿⣿⣶⣤⣀ ⣀⣤⣶⣿⣿⣿⣿⣿⣶⣦⣄ 
+ ⠙⠻⠿⣿⣿⣿⣿⣿⠿⠛⠉ ⠉⠛⠿⣿⣿⣿⣿⣿⡿⠟⠋ 
 -0.95
 """.strip()
     assert s == expected
 
 
-def test_plot_sin_amplitude():
+def test_plot_nonnegatives():
     t = np.linspace(0, 2.0 * np.pi, 500)
-    x = np.sin(t)
 
-    s = aaplot.plot_amplitudes(x, num_cols=25)
+    t = np.linspace(0, 2.0 * np.pi, 500)
+    x = np.sin(t) * np.cos(t * 100)
+
+    s = aaplot.plot_nonnegatives(x**2.0, num_cols=25)
+    print(s)
     expected = """
-1.00
-▂▃▅▇████▇▆▄▃▁▃▄▆▇████▇▅▃▂
+0.91
+  ⢀⣀⣤⣤⣤⣤⣄⣀     ⣀⣠⣤⣤⣤⣤⣀⡀  
+0.00
 """.strip()
     assert s == expected
