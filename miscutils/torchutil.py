@@ -1,4 +1,6 @@
 from contextlib import contextmanager
+import dataclasses
+from typing import Any
 
 from torch import nn
 
@@ -42,3 +44,69 @@ def eval_context(*modules):
     finally:
         for m, state in zip(modules, states):
             m.train(state)
+
+
+@dataclasses.dataclass
+class ModuleSummary:
+    name: str
+    cls_name: str
+    total_parameter_count: int
+    parameters: dict[str, nn.Parameter]  # meta-parameters
+    children: dict[str, "ModuleSummary"]
+    # TODO: buffers are not supported currently
+
+    def to_string(self, *, prefix: str = "") -> str:
+        ret = ""
+        for parname, p in self.parameters.items():
+            shape_string = "x".join(str(i) for i in p.shape)
+            ret += f"{prefix}  {parname}: {shape_string} = {p.numel()}\n"
+
+        for submod in self.children.values():
+            ret += submod.to_string(prefix=prefix + "  ")
+        ret = (
+            f"{prefix}{self.name}: {self.total_parameter_count} <{self.cls_name}>\n"
+            + ret
+        )
+        return ret
+
+    def __str__(self) -> str:
+        return self.to_string()
+
+    def to_json_dict(self, with_total_parameter_count: bool = True) -> dict[str, Any]:
+        """Converts self into a compact JSON format (suitable for experiment trackers)."""
+        ret = (
+            {"total_parameter_count": self.total_parameter_count}
+            if with_total_parameter_count
+            else {}
+        )
+
+        for name, p in self.parameters.items():
+            ret[name + ": Parameter"] = {
+                "shape": list(p.shape),
+                "dtype": str(p.dtype),
+            }
+        for name, m in self.children.items():
+            ret[name + ": " + m.cls_name] = m.to_json_dict()
+        return ret
+
+    @classmethod
+    def from_module(cls, module: nn.Module, name: str = "MODULE") -> "ModuleSummary":
+        cls_name = type(module).__qualname__
+        total_parameter_count = 0
+        parameters = {}
+        children = {}
+        for parname, p in module.named_parameters(recurse=False):
+            total_parameter_count += p.numel()
+            parameters[parname] = p.to("meta")
+
+        for subname, submod in module.named_children():
+            children[subname] = cls.from_module(submod, subname)
+            total_parameter_count += children[subname].total_parameter_count
+
+        return cls(
+            name=name,
+            cls_name=cls_name,
+            total_parameter_count=total_parameter_count,
+            parameters=parameters,
+            children=children,
+        )
