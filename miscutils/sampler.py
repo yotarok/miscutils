@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 import random
 import typing
 from typing import Generic
@@ -23,6 +24,10 @@ class StreamSampler(Generic[T]):
             if random.random() < 1.0 / self.input_count:
                 self.state[i] = sample
                 break
+
+    def add_from(self, samples: Iterable[T]) -> None:
+        for sample in samples:
+            self.add(sample)
 
     @property
     def result(self) -> list[T]:

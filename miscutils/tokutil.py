@@ -5,6 +5,7 @@ import torch
 
 class Detokenizer(typing.Protocol):
     def decode(self, token_ids: list[int], **kwargs) -> str: ...
+    def batch_decode(self, token_ids: list[int] | list[list[int]], **kwargs) -> str: ...
 
 
 def detokenize_batch(
@@ -17,7 +18,9 @@ def detokenize_batch(
             f"shapes of `ids` and `mask` must match ({ids.shape} != {mask.shape})"
         )
     id_lists = [
-        [i for i, m in zip(row_ids, row_mask) if m]
+        [int(i.item()) for i, m in zip(row_ids, row_mask) if m]
         for row_ids, row_mask in zip(ids, mask)
     ]
-    return [tok.decode(row, **decode_kwargs) for row in id_lists]
+    ret = tok.batch_decode(id_lists, **decode_kwargs)
+    assert isinstance(ret, list)
+    return ret

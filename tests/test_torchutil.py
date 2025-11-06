@@ -50,7 +50,9 @@ def test_module_summary_json_dump():
     )
     json_dict = torchutil.ModuleSummary.from_module(mod).to_json_dict()
     assert json_dict == {
+        "total_parameter_count": 62,
         "0: Linear": {
+            "total_parameter_count": 20,
             "weight: Parameter": {
                 "shape": [5, 3],
                 "dtype": "torch.float32",
@@ -60,8 +62,11 @@ def test_module_summary_json_dump():
                 "dtype": "torch.float32",
             },
         },
-        "1: ReLU": {},
+        "1: ReLU": {
+            "total_parameter_count": 0,
+        },
         "2: Linear": {
+            "total_parameter_count": 42,
             "weight: Parameter": {
                 "shape": [7, 5],
                 "dtype": "torch.float32",

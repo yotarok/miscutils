@@ -4,7 +4,7 @@ import Levenshtein
 
 import torch
 
-from miscutils import parutil
+from . import parutil
 
 T = typing.TypeVar("T")
 
