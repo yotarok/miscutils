@@ -28,7 +28,16 @@ include = ["miscutils*"]
 [tool.pytest.ini_options]
 pythonpath = ["."]
 
+[[tool.mypy.overrides]]
+module = "datasets.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "Levenshtein.*"
+ignore_missing_imports = true
+
 [dependency-groups]
 dev = [
+    "mypy>=1.18.2",
     "pytest>=8.4.2",
 ]

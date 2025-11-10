@@ -2,13 +2,13 @@
 
 from collections.abc import Iterable
 import datasets
-from typing import TypeVar
+from typing import TypeAlias, TypeVar
 import typing
 
 
-DatasetLike = datasets.Dataset | datasets.IterableDataset
-DatasetRow = dict[str, typing.Any]
-BatchedDatasetRows = dict[str, typing.Any]
+DatasetLike: TypeAlias = datasets.Dataset | datasets.IterableDataset
+DatasetRow: TypeAlias = dict[str, typing.Any]
+BatchedDatasetRows: TypeAlias = dict[str, typing.Any]
 
 D = TypeVar("D", bound=DatasetLike)
 T = TypeVar("T")

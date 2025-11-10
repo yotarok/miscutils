@@ -70,7 +70,7 @@ def plot_nonnegatives(
         top = x.max()
     assert top is not None
 
-    x = (x - bottom) / (top - bottom)
+    x = ((x - bottom) / (top - bottom)).astype(np.float32)
     framed_x = _frame(x, num_cols * 2).mean(axis=-1)
     qs = _quantize_real01(framed_x, _NUM_LEVELS)
     return f"""

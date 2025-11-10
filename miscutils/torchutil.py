@@ -2,6 +2,7 @@ from contextlib import contextmanager
 import dataclasses
 from typing import Any
 
+import torch
 from torch import nn
 
 
@@ -51,7 +52,7 @@ class ModuleSummary:
     name: str
     cls_name: str
     total_parameter_count: int
-    parameters: dict[str, nn.Parameter]  # meta-parameters
+    parameters: dict[str, torch.Tensor]  # meta-tensors
     children: dict[str, "ModuleSummary"]
     # TODO: buffers are not supported currently
 
@@ -74,7 +75,7 @@ class ModuleSummary:
 
     def to_json_dict(self, with_total_parameter_count: bool = True) -> dict[str, Any]:
         """Converts self into a compact JSON format (suitable for experiment trackers)."""
-        ret = (
+        ret: dict[str, Any] = (
             {"total_parameter_count": self.total_parameter_count}
             if with_total_parameter_count
             else {}

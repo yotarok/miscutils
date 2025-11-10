@@ -5,12 +5,12 @@ import numpy as np
 import numpy.typing as npt
 import torch
 
-T = typing.TypeVar("T")
+N = typing.TypeVar("N", bound=np.generic)
 
 
 def right_pad_to_multiple_of(
-    n: int, x: npt.NDArray, fill_value: T, axis: int = 0
-) -> npt.NDArray[T]:
+    n: int, x: npt.NDArray, fill_value: N, axis: int = 0
+) -> npt.NDArray[N]:
     length = x.shape[axis]
     target_length = int(np.ceil(length / n)) * n
     npad = target_length - length
@@ -115,7 +115,8 @@ def right_pad(
         for x in xs
     ]
     mask = length_to_right_pad_mask(
-        torch.tensor(lengths, device=xs[0].device), max_length
+        typing.cast(torch.LongTensor, torch.tensor(lengths, device=xs[0].device)),
+        max_length,
     )
     return torch.stack(padded_x), mask
 
