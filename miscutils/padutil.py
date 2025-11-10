@@ -89,7 +89,7 @@ def simulate_conv1d_length(
 
 
 def right_pad(
-    xs: list[torch.Tensor], *, value=0.0
+    xs: list[torch.Tensor], *, value=0.0, max_length: int | None = None
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """Makes a padded batch from a sequence of tensors.
 
@@ -101,7 +101,11 @@ def right_pad(
         raise ValueError("Attempted to make a padded batch from an empty sequence")
     dim = -1  # TODO: Generalize to arbitrary dim.
     lengths = [x.shape[dim] for x in xs]
-    max_length = max(lengths)
+    if max_length is None:
+        max_length = max(lengths)
+
+    # TODO: some treatments for oversized samples (error/ truncate/ extend_result)
+    #       note that we shouldn't support filtering here. it's outside of responsibility.
     padded_x = [
         torch.nn.functional.pad(
             x,

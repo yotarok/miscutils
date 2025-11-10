@@ -5,6 +5,12 @@ import os
 import torch
 import torch.distributed as dist
 
+_OPNAME_TO_IMPL = {
+    "sum": (dist.ReduceOp.SUM, None, None),
+    "avg": (dist.ReduceOp.AVG, None, lambda x: x / get_global_process_rank()[1]),
+    "max": (dist.ReduceOp.MAX, None, None),
+}
+
 
 def all_reduce(x: torch.Tensor, opname: str) -> torch.Tensor:
     """
@@ -51,6 +57,13 @@ def _is_ddp_available():
     return all(k in os.environ for k in required_vars)
 
 
+@functools.cache
+def get_global_process_rank() -> tuple[int, int]:
+    world_size = dist.get_world_size()
+    local_rank = dist.get_rank()
+    return local_rank, world_size
+
+
 def initialize_ddp() -> tuple[int, int]:
     """
     Initializes the distributed data parallel (DDP) environment.
@@ -62,8 +75,8 @@ def initialize_ddp() -> tuple[int, int]:
         return 0, 1
 
     dist.init_process_group(backend="nccl")
-    world_size = dist.get_world_size()
-    local_rank = dist.get_rank()
+
+    local_rank, world_size = get_global_process_rank()
 
     if torch.cuda.is_available():
         if torch.cuda.device_count() != world_size:
@@ -76,3 +89,8 @@ def initialize_ddp() -> tuple[int, int]:
     atexit.register(lambda: dist.destroy_process_group())
 
     return local_rank, world_size
+
+
+def barrier_if_distributed() -> None:
+    if dist.is_initialized():
+        dist.barrier()
