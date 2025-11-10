@@ -69,6 +69,7 @@ def load_dataset_from_hugging_face_hub(uri: DatasetUri) -> datasets.Dataset:
         },
     )
 
+    assert isinstance(dataset, datasets.Dataset)
     return dataset
 
 
