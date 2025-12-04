@@ -1,5 +1,7 @@
+from collections.abc import Sequence
+import dataclasses
 import typing
-from typing import Sequence
+from typing import Any, Literal, TypeAlias, NamedTuple
 
 import numpy as np
 import numpy.typing as npt
@@ -148,3 +150,56 @@ def pack_and_pad_right(
         < lengths
     )
     return y, ymask
+
+
+PadDirection: TypeAlias = Literal["left"] | Literal["right"]
+
+
+class _CollatePadSpec(NamedTuple):
+    direction: PadDirection
+    pad_value: Any
+    mask_name: str | None
+    max_length: int | None
+
+
+@dataclasses.dataclass(frozen=True)
+class PadAndCollateFn:
+    pad_value: Any = None
+    pad_direction: PadDirection = "right"
+    pad_columns: dict[str, _CollatePadSpec] = dataclasses.field(default_factory=dict)
+
+    def pad_column(
+        self,
+        column_name: str,
+        mask_name: str | None,
+        pad_direction: PadDirection | None = None,
+        pad_value: Any = None,
+        max_length: int | None = None,
+    ) -> "PadAndCollateFn":
+        pad_columns = self.pad_columns
+        pad_direction = (
+            pad_direction if pad_direction is not None else self.pad_direction
+        )
+        pad_value = pad_value if pad_value is not None else self.pad_value
+        if pad_value is None:
+            raise ValueError("No default `pad_value` is set for this collator.")
+        pad_columns[column_name] = _CollatePadSpec(
+            pad_direction, pad_value, mask_name, max_length
+        )
+        return dataclasses.replace(self, pad_columns=pad_columns)
+
+    def __call__(self, rows):
+        ret = dict()
+        for col, spec in self.pad_columns.items():
+            if spec.direction != "right":
+                raise ValueError("Only right padding is supported currently.")
+            pad_fn = right_pad if spec.direction == "right" else right_pad
+
+            values, mask = pad_fn(
+                [row[col] for row in rows],
+                max_length=spec.max_length,
+            )
+            ret[col] = values
+            if spec.mask_name is not None:
+                ret[spec.mask_name] = mask
+        return ret
