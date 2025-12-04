@@ -21,39 +21,47 @@ def select_columns(ds: D, columns: Iterable[str]) -> D:
     return typing.cast(D, ds.remove_columns(to_be_removed))
 
 
-def make_1d_length_filter_fn(
-    column: str, max_len: int, *, dim: int = 0
-) -> typing.Callable[[DatasetRow], bool]:
-    """Makes a func that can be used with `ds.filter` to remove short samples.
+def _1d_length_filter(row: DatasetRow, *, column: str, max_len: int, dim: int) -> bool:
+    x = row[column]
+    length = 0
+    if isinstance(x, list):
+        if dim != 0:
+            raise ValueError(
+                "if dataset contains lists, `dim` of `make_1d_filter_fn` must be 0"
+            )
+        length = len(x)
+    else:
+        # TODO: The logic in this branch is not robust, improve.
+        length = x.shape[dim]
+    return length <= max_len
 
-    Arguments:
-        column: the name of column to be tested.
-        max_len: max length to be extracted.
-        dim: when `row[column]` is an array, `row[column].shape[dim]` is used
-            a length for that row.
-    """
 
-    def filter_fn(row: DatasetRow) -> bool:
-        x = row[column]
-        length = 0
-        if isinstance(x, list):
-            if dim != 0:
-                raise ValueError(
-                    "if dataset contains lists, `dim` of `make_1d_filter_fn` must be 0"
-                )
-            length = len(x)
-        else:
-            # TODO: The logic in this branch is not robust, improve.
-            length = x.shape[dim]
-        return length <= max_len
-
-    return filter_fn
+def apply_1d_length_filter(
+    ds: D, column: str, max_len: int, *, dim: int = 0, **kwargs
+) -> D:
+    return typing.cast(
+        D,
+        ds.filter(
+            _1d_length_filter,
+            fn_kwargs={"column": column, "max_len": max_len, "dim": dim},
+            **kwargs,
+        ),
+    )
 
 
 def unbatch(rows: BatchedDatasetRows) -> list[DatasetRow]:
     "Transposes the dictionary of batched arrays to list of dictionary."
     ks = rows.keys()
     return [dict(zip(ks, vs)) for vs in zip(*rows.values())]
+
+
+def _map_and_reduce_in_batch_fn(
+    rows: BatchedDatasetRows, map_fn, reduce_fn
+) -> BatchedDatasetRows:
+    reduced = reduce_fn([map_fn(row) for row in unbatch(rows)])
+    return {
+        "_r": [reduced],
+    }
 
 
 def map_and_reduce(
@@ -64,12 +72,6 @@ def map_and_reduce(
     num_proc: int | None = None,
     batch_size: int | None = 1000,
 ) -> T:
-    def in_batch_fn(rows: BatchedDatasetRows, map_fn, reduce_fn) -> BatchedDatasetRows:
-        reduced = reduce_fn([map_fn(row) for row in unbatch(rows)])
-        return {
-            "_r": [reduced],
-        }
-
     non_iterable_kwargs = {}
     if isinstance(ds, datasets.Dataset):
         # ds is Dataset, use num_proc arg
@@ -82,7 +84,7 @@ def map_and_reduce(
             )
 
     partial = ds.map(
-        in_batch_fn,
+        _map_and_reduce_in_batch_fn,
         batched=True,
         batch_size=batch_size,
         fn_kwargs={"map_fn": map_fn, "reduce_fn": reduce_fn},
