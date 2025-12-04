@@ -8,15 +8,19 @@ import torch.distributed as dist
 
 @functools.cache
 def get_global_process_rank() -> tuple[int, int]:
-    world_size = dist.get_world_size()
-    local_rank = dist.get_rank()
-    return local_rank, world_size
+    if dist.is_initialized():
+        world_size = dist.get_world_size()
+        local_rank = dist.get_rank()
+        return local_rank, world_size
+    else:
+        return 0, 1
 
 
 _OPNAME_TO_IMPL = {
     "sum": (dist.ReduceOp.SUM, None, None),
     "avg": (dist.ReduceOp.AVG, None, lambda x: x / get_global_process_rank()[1]),
     "max": (dist.ReduceOp.MAX, None, None),
+    "logical_and": (dist.ReduceOp.PRODUCT, lambda x: x.float(), lambda x: x != 0.0),
 }
 
 
@@ -97,5 +101,5 @@ def initialize_ddp() -> tuple[int, int]:
 
 
 def barrier_if_distributed() -> None:
-    if dist.is_initialized():
+    if dist.is_initialized() and get_global_process_rank()[1] > 1:
         dist.barrier()
