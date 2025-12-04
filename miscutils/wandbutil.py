@@ -14,3 +14,7 @@ class NullWandbRun:
     @property
     def config(self):
         return {}
+
+    @property
+    def id(self) -> str:
+        return "<null_wandb>"
