@@ -167,6 +167,10 @@ class PadAndCollateFn:
     pad_value: Any = None
     pad_direction: PadDirection = "right"
     pad_columns: dict[str, _CollatePadSpec] = dataclasses.field(default_factory=dict)
+    output_all_columns: bool = False
+
+    def include_all_columns(self, include: bool = True) -> "PadAndCollateFn":
+        return dataclasses.replace(self, output_all_columns=include)
 
     def pad_column(
         self,
@@ -202,4 +206,10 @@ class PadAndCollateFn:
             ret[col] = values
             if spec.mask_name is not None:
                 ret[spec.mask_name] = mask
+        if self.output_all_columns and len(rows) > 0:
+            ks = rows[0].keys()
+            for k in ks:
+                if k in self.pad_columns.keys():
+                    continue
+                ret[k] = [row[k] for row in rows]
         return ret
