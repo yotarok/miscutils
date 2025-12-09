@@ -21,8 +21,7 @@ def select_columns(ds: D, columns: Iterable[str]) -> D:
     return typing.cast(D, ds.remove_columns(to_be_removed))
 
 
-def _1d_length_filter(row: DatasetRow, *, column: str, max_len: int, dim: int) -> bool:
-    x = row[column]
+def _1d_length_filter(x, *, max_len: int, dim: int) -> bool:
     length = 0
     if isinstance(x, list):
         if dim != 0:
@@ -43,7 +42,8 @@ def apply_1d_length_filter(
         D,
         ds.filter(
             _1d_length_filter,
-            fn_kwargs={"column": column, "max_len": max_len, "dim": dim},
+            input_columns=[column],
+            fn_kwargs={"max_len": max_len, "dim": dim},
             **kwargs,
         ),
     )
