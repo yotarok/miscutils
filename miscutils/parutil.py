@@ -103,3 +103,38 @@ def initialize_ddp() -> tuple[int, int]:
 def barrier_if_distributed() -> None:
     if dist.is_initialized() and get_global_process_rank()[1] > 1:
         dist.barrier()
+
+
+def leader_follower(_f=None, *, leader_rank: int = 0):
+    """Makes a function to be executed first only in a leader process, and then in followers.
+
+    This decorator is for functions that has an internal caching mechanism.
+    """
+
+    def wrapper_f(f):
+        @functools.wraps(f)
+        def wrapped_f(*args, **kwargs):
+            rank, world_size = get_global_process_rank()
+            if world_size == 1:
+                return f(*args, **kwargs)
+
+            barrier_if_distributed()
+            ret = None
+            # Only leader does something
+            if rank == leader_rank:
+                ret = f(*args, **kwargs)
+            barrier_if_distributed()
+            # Only followers do something
+            if rank != leader_rank:
+                ret = f(*args, **kwargs)
+            barrier_if_distributed()
+            return ret
+
+        return wrapped_f
+
+    if _f is None:
+        # used with arguments
+        return wrapper_f
+    else:
+        # used without arguments
+        return wrapper_f(_f)
